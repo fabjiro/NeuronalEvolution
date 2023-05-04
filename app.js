@@ -1,19 +1,22 @@
 let player;
 let enemys = [];
 
+const widthMap = 900;
+const limitNewGenerate = widthMap * 0.8;
+
 function setup() {
-  createCanvas(600, 400);
+  createCanvas(widthMap, 400);
   player = new Player();
 }
 
 function keyPressed() {
   if (key == " ") {
     player.jump();
-  }
-
-  if (key == "Enter") {
+  } else if (key == "Enter") {
     enemys = [];
     loop();
+  } else if (key == "ArrowDown") {
+    player.down();
   }
 }
 
@@ -22,7 +25,14 @@ function draw() {
 
   if (enemys.length < 3) {
     if (random(1) < 0.01) {
-      enemys.push(new Enemy());
+      if (enemys.length > 0) {
+        let lastEnemy = enemys[enemys.length - 1];
+        if (lastEnemy.x < limitNewGenerate) {
+          enemys.push(new Enemy());
+        }
+      } else {
+        enemys.push(new Enemy());
+      }
     }
   }
 
@@ -31,7 +41,6 @@ function draw() {
 
   for (let i = 0; i < enemys.length; i++) {
     let enemy = enemys[i];
-
     if (player.hits(enemy)) {
       console.log("Game Hover");
       noLoop();

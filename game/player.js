@@ -6,11 +6,18 @@ class Player {
     this.vy = 0;
     this.gravity = 0.6;
   }
+
   jump() {
     if (this.y == height - this.r) {
-      this.vy = -13;
+      this.vy = -11;
     }
-  }r
+  }
+
+  down() {
+    this.vy = 0;
+    this.y = height - this.r;
+  }
+
   hits(enemy) {
     return collideRectCircle(
       this.x,
