@@ -1,11 +1,15 @@
 class Player {
-  constructor() {
+  /**
+   * 
+   * @param {number[]} config 
+   */
+  constructor(config) {
     this.r = 50;
     this.x = this.r;
     this.y = height - this.r;
     this.vy = 0;
     this.gravity = 0.6;
-    this.brain = new NeuronalNetwork([2, 3, 1]);
+    this.brain = new NeuronalNetwork(config);
   }
   /**
    *
