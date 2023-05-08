@@ -5,6 +5,19 @@ class Player {
     this.y = height - this.r;
     this.vy = 0;
     this.gravity = 0.6;
+    this.brain = new NeuronalNetwork([2, 3, 1]);
+  }
+  /**
+   *
+   * @param {number[]} inputs
+   */
+  predict(inputs) {
+    const output = this.brain.Prediccion(inputs)[0];
+    if(output > 0.5){
+      this.jump();
+    } else  {
+      this.down();
+    }
   }
 
   jump() {

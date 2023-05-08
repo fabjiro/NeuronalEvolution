@@ -37,6 +37,12 @@ function draw() {
   }
 
   player.show();
+  if (enemys.length > 0) {
+    player.predict([
+      enemys[0].x / widthMap,
+      enemys[1] ? enemys[1].x / widthMap : 0,
+    ]);
+  }
   player.move();
 
   for (let i = 0; i < enemys.length; i++) {
