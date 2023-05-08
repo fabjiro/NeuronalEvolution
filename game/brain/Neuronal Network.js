@@ -2,7 +2,6 @@ class NeuronalNetwork{
     constructor(config = []){
         //creando capas pesos
         this.Config = config;
-        this.Learningrate = 0.5;
         this.Capas = [];
         this.Pesos = [];
         this.Bias = [];
