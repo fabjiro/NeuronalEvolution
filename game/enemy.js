@@ -6,7 +6,7 @@ class Enemy {
   }
 
   move() {
-    this.x -= 7;
+    this.x -= 6;
   }
 
   show() {

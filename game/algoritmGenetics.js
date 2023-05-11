@@ -12,7 +12,7 @@ function seleccion(arr, selectCount) {
  *
  * @param {Player} ind1
  * @param {Player} godInd
- * @returns {Player}
+ * @returns
  */
 function crossing(ind1, godInd) {
   let brain1 = ind1.brain;
@@ -21,34 +21,31 @@ function crossing(ind1, godInd) {
   // pesos
   for (let i = 0; i < brain1.Pesos.length; i++) {
     for (let j = 0; j < brain1.Pesos[i].Data.length; j++) {
-      for (let k = 0; k < brain1.Pesos[i].Data[j].length; k++) {
-        if (random(1) < 0.5) {
-          brain1.Pesos[i].Data[j][k] = brain2.Pesos[i].Data[j][k];
-        }
+      if (Math.random() > 0.2) {
+        brain1.Pesos[i].Data[j] = brain2.Pesos[i].Data[j];
       }
     }
   }
-  ind1.brain = brain1;
-  return ind1;
+  return brain1;
 }
 /**
  *
  * @param {Player} ind1
- * @returns {Player}
+ * @returns
  */
 function mutation(ind1) {
   let brain1 = ind1.brain;
   // pesos
   for (let i = 0; i < brain1.Pesos.length; i++) {
     for (let j = 0; j < brain1.Pesos[i].Data.length; j++) {
-      if (random(1) < 0.5) {
-        for (let k = 0; k < brain1.Pesos[i].Data[j].length; k++) {
-          const mod = Math.random() - Math.random();
-          brain1.Pesos[i].Data[j][k] += mod;
+      for (let k = 0; k < brain1.Pesos[i].Data[j].length; k++) {
+        if (Math.random() > 0.5) {
+          brain1.Pesos[i].Data[j][k] += Math.random() - Math.random();
+        } else {
+          brain1.Pesos[i].Data[j][k] -= Math.random() - Math.random();
         }
       }
     }
   }
-  ind1.brain = brain1;
-  return ind1;
+  return brain1;
 }

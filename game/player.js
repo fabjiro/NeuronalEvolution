@@ -1,7 +1,7 @@
 class Player {
   /**
-   * 
-   * @param {number[]} config 
+   *
+   * @param {number[]} config
    */
   constructor(config) {
     this.r = 50;
@@ -16,11 +16,9 @@ class Player {
    * @param {number[]} inputs
    */
   predict(inputs) {
-    const output = this.brain.Prediccion(inputs)[0];
-    if(output > 0.5){
+    const output = this.brain.Prediccion(inputs);
+    if (output[0] > 0.9) {
       this.jump();
-    } else  {
-      this.down();
     }
   }
 
@@ -55,5 +53,11 @@ class Player {
 
   show() {
     rect(this.x, this.y, this.r, this.r);
+  }
+
+  reset() {
+    this.x = this.r;
+    this.y = height - this.r;
+    this.vy = 0;
   }
 }
