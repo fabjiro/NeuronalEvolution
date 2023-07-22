@@ -9,6 +9,8 @@ class Player {
     this.y = height - this.r;
     this.vy = 0;
     this.gravity = 0.6;
+    this.score = 0;
+    this.aLive = true;
     this.brain = new NeuronalNetwork(config);
   }
   /**
@@ -17,7 +19,7 @@ class Player {
    */
   predict(inputs) {
     const output = this.brain.Prediccion(inputs);
-    if (output[0] > 0.9) {
+    if (output[0] > 0.7) {
       this.jump();
     }
   }

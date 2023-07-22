@@ -5,7 +5,7 @@
  * @returns {Player[]}
  */
 function seleccion(arr, selectCount) {
-  return arr.slice(selectCount);
+  return arr.sort((a, b) => a.score - b.score).slice(selectCount);
 }
 
 /**
@@ -18,12 +18,9 @@ function crossing(ind1, godInd) {
   let brain1 = ind1.brain;
   const brain2 = godInd.brain;
 
-  // pesos
   for (let i = 0; i < brain1.Pesos.length; i++) {
-    for (let j = 0; j < brain1.Pesos[i].Data.length; j++) {
-      if (Math.random() > 0.2) {
-        brain1.Pesos[i].Data[j] = brain2.Pesos[i].Data[j];
-      }
+    if (Math.random() > 0.5) {
+      brain1.Pesos[i] = brain2.Pesos[i];
     }
   }
   return brain1;

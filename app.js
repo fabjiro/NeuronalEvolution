@@ -1,13 +1,11 @@
 const widthMap = 900; // largo del mapa
 const limitNewGenerate = widthMap * 0.8; // punto limite de generar nuevoe enemigo
-const countPlayers = 20; // cantidad de jugadores
+const countPlayers = 10; // cantidad de jugadores
 const brainConfig = [1, 2, 1]; // configuracion de la ia
 const maxCross = 4;
-const maxPlayerSelection = 4;
+const maxPlayerSelection = 2;
 
 let players = []; // jugadores
-let deadPlayers = []; // jugadores eliminados
-let crossPlayer = []; // jugadores cruzados
 let enemys = [];
 let score = 0;
 let maxScore = 0;
@@ -17,7 +15,7 @@ function setup() {
   createCanvas(widthMap, 400);
 
   // poblacion inicial
-  initialPoblation();
+  initialPoblation(0, countPlayers);
 }
 
 function keyPressed() {
@@ -27,56 +25,51 @@ function keyPressed() {
 }
 
 function isAllDead() {
-  let isDead = players.length === 0;
+  const state = players.map((e) => e.aLive);
+  let isDead = !state.includes(true);
 
   if (isDead) {
     maxScore = score > maxScore ? score : maxScore;
-    // seleccion de los mejores.
-    const maxPlayers = seleccion(deadPlayers, -maxPlayerSelection);
+    const maxPlayers = seleccion(players, -maxPlayerSelection);
 
-    // se hace una nuevo poblacion.
-    // initialPoblation();
-    // players.splice(-3);
-    // players.push(...maxPlayers);
-    players.push(...deadPlayers);
-    // for (let i = 0; i < countPlayers; i++) {
-    //   players.push(maxPlayers[i % maxPlayers.length]);
-    // }
+    for (let _ = 0; _ < maxPlayerSelection; _++) {
+      maxPlayers[_].aLive = true;
+    }
+    players = [];
+    players.push(...maxPlayers);
+    initialPoblation(0, countPlayers - maxPlayerSelection);
 
     // cruce
-    for (let index = 0; index < maxCross; index++) {
-      const individual = randomNumber(0, players.length - maxPlayerSelection);
-      const maxIndividual = randomNumber(0, maxPlayers.length);
+    for (let _ = 0; _ < maxCross; _++) {
+      const individual = randomNumber(maxPlayerSelection, players.length);
+      const maxIndividual = randomNumber(0, maxPlayerSelection);
 
-      if (!crossPlayer.includes(individual)) {
-        crossPlayer.push(individual);
+      const resultPlayer = crossing(
+        players[individual],
+        maxPlayers[maxIndividual]
+      );
 
-        const resultPlayer = crossing(
-          players[individual],
-          maxPlayers[maxIndividual]
-        );
-
-        players[individual].brain = resultPlayer;
-      }
+      players[individual].brain = resultPlayer;
     }
 
     // mutacion
-    for (let i = 0; i < players.length - maxPlayerSelection; i++) {
-      const result = mutation(players[i]);
-      players[i].brain = result;
+    for (let i = maxPlayerSelection; i < players.length; i++) {
+      players[i].brain = mutation(players[i]);
     }
 
     score = 0;
     enemys = [];
-    deadPlayers = [];
     crossPlayer = [];
     generacion++;
   }
 }
-
-function initialPoblation() {
-  players = [];
-  for (let index = 0; index < countPlayers; index++) {
+/**
+ *
+ * @param {number} n1
+ * @param {number} n2
+ */
+function initialPoblation(n1, n2) {
+  for (let index = n1; index < n2; index++) {
     players.push(new Player(brainConfig));
   }
 }
@@ -88,7 +81,6 @@ function draw() {
 
   background(220);
   text(`Score: ${score}`, 20, 40);
-  text(`A live: ${players.length}`, 20, 60);
   text(`Max score: ${score > maxScore ? score : maxScore}`, 20, 80);
   text(`Generacion: ${generacion}`, widthMap - 100, 30);
 
@@ -110,9 +102,11 @@ function draw() {
   }
 
   for (let i = 0; i < players.length; i++) {
-    players[i].show();
-    players[i].predict([input1]);
-    players[i].move();
+    if (players[i].aLive) {
+      players[i].show();
+      players[i].predict([input1]);
+      players[i].move();
+    }
   }
 
   // Colision entre jugador y enemigo
@@ -120,10 +114,12 @@ function draw() {
     let enemy = enemys[i];
     for (let index = 0; index < players.length; index++) {
       // si es eliminado
-      if (players[index].hits(enemy)) {
-        players[index].reset();
-        deadPlayers.push(players[index]);
-        players.splice(index, 1);
+      if (players[index].aLive) {
+        if (players[index].hits(enemy)) {
+          players[index].aLive = false;
+          players[index].score = score;
+          players[index].reset();
+        }
       }
     }
     enemy.show();
