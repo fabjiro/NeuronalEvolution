@@ -27,17 +27,29 @@ let gameState = {
   cameraFollow: true // ← Nueva variable para el control de cámara
 };
 
-let camButton, exportButton, importButton, importFileInput;
+let camButton, exportButton, importButton, importFileInput, randomMapButton;
 
 // ─── GENERACIÓN DE PISTA PARAMETRIZADA ─────────────────────────
-function generateTrack() {
+/**
+ * Genera una pista con parámetros configurables.
+ * @param {Object} opts - Parámetros de forma (opcional, usa defaults si no se pasan)
+ */
+function generateTrack(opts = {}) {
+  const {
+    freq1 = 2,   amp1 = 70,
+    freq2 = 4,   amp2 = 20,
+    freq3 = 3,   amp3 = 60,
+    baseRx = CONFIG.TRACK.BASE_RADIUS,
+    baseRy = CONFIG.TRACK.BASE_RADIUS - 50
+  } = opts;
+
   const pts = [];
   const N = CONFIG.TRACK.POINTS;
   
   for (let i = 0; i < N; i++) {
     const t = (i / N) * TWO_PI;
-    const rx = CONFIG.TRACK.BASE_RADIUS + 70 * sin(t * 2) + 20 * cos(t * 4);  
-    const ry = (CONFIG.TRACK.BASE_RADIUS - 50) + 60 * sin(t * 3);
+    const rx = baseRx + amp1 * sin(t * freq1) + amp2 * cos(t * freq2);  
+    const ry = baseRy + amp3 * sin(t * freq3);
     
     pts.push({ 
       x: (CONFIG.CANVAS.W / 2) + rx * cos(t), 
@@ -59,6 +71,52 @@ function generateTrack() {
     p.inner = { x: p.x - nx * CONFIG.TRACK.WIDTH / 2, z: p.z - nz * CONFIG.TRACK.WIDTH / 2 };
   }
   return pts;
+}
+
+/**
+ * Genera una pista con parámetros aleatorios (formas variadas pero siempre driveables).
+ */
+function generateRandomTrack() {
+  // Frecuencias: entre 1 y 6, asegurando que no sean iguales para variedad
+  const f1 = randomNumber(1, 3);
+  const f2 = randomNumber(2, 5);
+  const f3 = randomNumber(1, 4);
+
+  // Amplitudes: mantienen la pista dentro de límites razonables
+  const a1 = randomNumber(30, 100);
+  const a2 = randomNumber(10, 50);
+  const a3 = randomNumber(20, 80);
+
+  // Radio base: variación moderada para mantener la pista centrada
+  const baseRx = randomNumber(200, 300);
+  const baseRy = randomNumber(150, 250);
+
+  return generateTrack({
+    freq1: f1, amp1: a1,
+    freq2: f2, amp2: a2,
+    freq3: f3, amp3: a3,
+    baseRx, baseRy
+  });
+}
+
+/**
+ * Reinicia la simulación con una nueva pista aleatoria,
+ * pero CONSERVA los cerebros actuales (no pierde lo aprendido).
+ */
+function regenerateTrack() {
+  gameState.track = generateRandomTrack();
+
+  // Conservar los cerebros existentes, solo resetear posiciones y scores
+  for (const c of gameState.cars) {
+    c.reset();
+  }
+  gameState.framesAlive = 0;
+  gameState.generation = 1;
+  gameState.bestEverScore = 0;
+  gameState.hallOfFame = [];
+
+  console.log('🗺️  Nuevo mapa generado | Cerebros conservados |',
+    `${gameState.cars.length} coches adaptándose al nuevo circuito`);
 }
 
 // ─── MATEMÁTICAS UTILITARIAS OPTIMIZADAS ───────────────────────
@@ -353,6 +411,11 @@ function setup() {
   importButton.mousePressed(() => {
     importFileInput.elt.click(); // Dispara el diálogo de archivo
   });
+
+  // ─── BOTÓN MAPA ALEATORIO ───────────────────────────────
+  randomMapButton = createButton('🎲 Mapa Aleatorio');
+  btnStyle(randomMapButton, '#9C27B0', '150px');
+  randomMapButton.mousePressed(() => regenerateTrack());
 }
 
 // ─── EXPORTAR / IMPORTAR CEREBRO ──────────────────────────────
