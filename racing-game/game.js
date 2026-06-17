@@ -205,6 +205,48 @@ class Car {
     return minDist;
   }
 
+  /**
+   * Comprueba si un punto (px, pz) está DENTRO del polígono de la pista.
+   * Usa los cuadriláteros renderizados (inner/outer edges) para coincidencia 100% visual.
+   */
+  isPointOnTrack(px, pz) {
+    const checkRange = 5;
+    const N = gameState.track.length;
+
+    for (let offset = -checkRange; offset <= checkRange; offset++) {
+      const i = (this.currentCheckpoint + offset + N) % N;
+      const j = (i + 1) % N;
+
+      // Cuadrilátero del segmento: inner[i] → inner[j] → outer[j] → outer[i]
+      const a = gameState.track[i].inner;
+      const b = gameState.track[j].inner;
+      const c = gameState.track[j].outer;
+      const d = gameState.track[i].outer;
+
+      if (this._pointInQuad(px, pz, a, b, c, d)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Test punto-en-cuadrilátero convexo usando productos cruzados.
+   * Los vértices a,b,c,d deben estar en orden (horario o antihorario).
+   */
+  _pointInQuad(px, pz, a, b, c, d) {
+    const cross = (p1, p2) => (p2.x - p1.x) * (pz - p1.z) - (p2.z - p1.z) * (px - p1.x);
+
+    const s1 = Math.sign(cross(a, b));
+    const s2 = Math.sign(cross(b, c));
+    const s3 = Math.sign(cross(c, d));
+    const s4 = Math.sign(cross(d, a));
+
+    // Punto interior si todos los signos son >=0 o todos <=0
+    return (s1 >= 0 && s2 >= 0 && s3 >= 0 && s4 >= 0)
+        || (s1 <= 0 && s2 <= 0 && s3 <= 0 && s4 <= 0);
+  }
+
   updateSensors() {
     for (let i = 0; i < CONFIG.BRAIN.SENSORS; i++) {
       const angle = this.heading + CONFIG.CAR.SENSOR_ANGLES[i];
@@ -214,7 +256,7 @@ class Car {
         distance += step;
         const testX = this.pos.x + Math.cos(angle) * distance;
         const testZ = this.pos.z + Math.sin(angle) * distance;
-        if (this.getDistanceFromTrack(testX, testZ) > CONFIG.TRACK.WIDTH / 2) break;
+        if (!this.isPointOnTrack(testX, testZ)) break;
       }
       this.sensorReadings[i] = distance / CONFIG.CAR.SENSOR_MAX_DIST;
     }
@@ -229,7 +271,8 @@ class Car {
     this.pos.x += Math.cos(this.heading) * CONFIG.CAR.SPEED;
     this.pos.z += Math.sin(this.heading) * CONFIG.CAR.SPEED;
 
-    if (this.getDistanceFromTrack() > CONFIG.TRACK.WIDTH / 2) {
+    // Colisión: test point-in-polygon contra los cuadriláteros renderizados
+    if (!this.isPointOnTrack(this.pos.x, this.pos.z)) {
       this.alive = false;
       return;
     }
