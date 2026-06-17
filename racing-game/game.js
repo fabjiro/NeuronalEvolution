@@ -99,13 +99,49 @@ class Car {
     // Si se pasan coordenadas explícitas (sensores), usarlas; si no, usar this.pos
     const x = px !== undefined ? px : this.pos.x;
     const z = pz !== undefined ? pz : this.pos.z;
-    let minDist = Infinity;
-    const checkRange = 3; 
+    const halfW = CONFIG.TRACK.WIDTH / 2;
+    const checkRange = 5;
     const N = gameState.track.length;
+
+    // 1º Buscar el segmento donde el coche proyecta (t ∈ [0,1])
+    //    y usar distancia PERPENDICULAR real (sin clamping a endpoints)
+    let bestPerpDist = Infinity;
+    let foundProjected = false;
+
     for (let offset = -checkRange; offset <= checkRange; offset++) {
-      let idx = (this.currentCheckpoint + offset + N) % N;
-      let nextIdx = (idx + 1) % N;
-      const d = getSegmentDistance(x, z, gameState.track[idx], gameState.track[nextIdx]);
+      const idx = (this.currentCheckpoint + offset + N) % N;
+      const nextIdx = (idx + 1) % N;
+      const a = gameState.track[idx];
+      const b = gameState.track[nextIdx];
+
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const l2 = dx * dx + dz * dz;
+      if (l2 === 0) continue;
+
+      // Parámetro de proyección (sin clamp)
+      const t = ((x - a.x) * dx + (z - a.z) * dz) / l2;
+
+      if (t >= 0 && t <= 1) {
+        // El coche proyecta sobre este segmento → distancia perpendicular real
+        foundProjected = true;
+        const projX = a.x + t * dx;
+        const projZ = a.z + t * dz;
+        const perpDist = Math.sqrt((x - projX) ** 2 + (z - projZ) ** 2);
+        if (perpDist < bestPerpDist) bestPerpDist = perpDist;
+      }
+    }
+
+    if (foundProjected) {
+      return bestPerpDist;
+    }
+
+    // 2º Si no proyecta en ningún segmento (fuera del circuito),
+    //    buscar el centro de pista más cercano como fallback
+    let minDist = Infinity;
+    for (let offset = -checkRange; offset <= checkRange; offset++) {
+      const idx = (this.currentCheckpoint + offset + N) % N;
+      const d = Math.sqrt((x - gameState.track[idx].x) ** 2 + (z - gameState.track[idx].z) ** 2);
       if (d < minDist) minDist = d;
     }
     return minDist;
@@ -152,6 +188,31 @@ class Car {
     }
   }
 
+  /**
+   * Devuelve un color p5.js en formato [r,g,b,alpha] basado en la lectura del sensor.
+   * Degradado continuo: rojo (peligro) → amarillo (precaución) → verde (seguro).
+   * @param {number} reading - Valor normalizado [0,1] donde 0 = borde muy cerca
+   */
+  sensorColor(reading) {
+    // reading: 0 = pegado al borde, 1 = sin borde a la vista
+    if (reading < 0.25) {
+      // Rojo → Naranja (0.00 → 0.25)
+      const t = reading / 0.25;
+      return [255, Math.floor(50 + 115 * t), 50, 230];
+    } else if (reading < 0.55) {
+      // Naranja → Amarillo (0.25 → 0.55)
+      const t = (reading - 0.25) / 0.30;
+      return [255, Math.floor(165 + 90 * t), 50, 220];
+    } else if (reading < 0.80) {
+      // Amarillo → Verde (0.55 → 0.80)
+      const t = (reading - 0.55) / 0.25;
+      return [Math.floor(255 - 205 * t), 255, Math.floor(50 + 50 * t), 210];
+    } else {
+      // Verde brillante (0.80 → 1.00)
+      return [50, 255, 100, 200];
+    }
+  }
+
   render(isBest) {
     push();
     translate(this.pos.x, 6, this.pos.z);
@@ -187,18 +248,35 @@ class Car {
     box(4, 3, 2);
     pop();
 
+    // Sensores láser: solo en el mejor coche
     if (isBest && this.alive) {
-      strokeWeight(2);
+
       for (let i = 0; i < CONFIG.BRAIN.SENSORS; i++) {
         const a = CONFIG.CAR.SENSOR_ANGLES[i];
-        const d = this.sensorReadings[i] * CONFIG.CAR.SENSOR_MAX_DIST;
+        const reading = this.sensorReadings[i];
+        const d = reading * CONFIG.CAR.SENSOR_MAX_DIST;
         
-        if (this.sensorReadings[i] < 0.9) stroke(255, 50, 50, 200);
-        else stroke(50, 255, 50, 100);
+        // Color degradado según peligro
+        const [cr, cg, cb, ca] = this.sensorColor(reading);
         
+        // Línea del láser
+        strokeWeight(3);
+        stroke(cr, cg, cb, ca);
         const endX = Math.sin(a) * d;
         const endZ = Math.cos(a) * d;
         line(0, 2, 21, endX, 2, 21 + endZ);
+
+        // Esfera de impacto en el extremo del láser
+        if (reading < 0.99) {
+          // Solo si el láser chocó con algo (no llegó al máximo)
+          push();
+          noStroke();
+          fill(cr, cg, cb, ca);
+          emissiveMaterial(cr, cg, cb);
+          translate(endX, 2, 21 + endZ);
+          sphere(3);
+          pop();
+        }
       }
     }
     pop();
