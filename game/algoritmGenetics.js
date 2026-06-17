@@ -31,7 +31,7 @@ function crossing(ind1, godInd) {
   }
   return brain1;
 }
-const MUTATION_RATE = 0.2;   // 20% por peso
+const MUTATION_RATE = 0.4;   // 40% por peso
 const MUTATE_POWER = 0.5;    // perturbación Gaussiana
 const REPLACE_RATE = 0.05;   // 5% reemplazo completo
 const MIN_WEIGHT = -30;
