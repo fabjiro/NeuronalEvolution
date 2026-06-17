@@ -10,6 +10,7 @@ class Player {
     this.vy = 0;
     this.gravity = 0.6;
     this.score = 0;
+    this.fitness = 0; // frames que ha sobrevivido
     this.aLive = true;
     this.brain = new NeuronalNetwork(config);
   }

@@ -1,48 +1,124 @@
 /**
+ * Algoritmo Genético Moderno para Neuronal Evolution
  *
- * @param {Player[]} arr
- * @param {number} selectCount
- * @returns {Player[]}
+ * Estrategias implementadas:
+ * - Selección por Torneo (mejor presión evolutiva que truncamiento)
+ * - Cruce Uniforme (cada peso individual se hereda independientemente)
+ * - Mutación Gaussiana con tasa y magnitud configurables
+ * - Copia profunda (deep copy) para evitar corrupción de referencias
  */
-function seleccion(arr, selectCount) {
-  return arr.sort((a, b) => a.score - b.score).slice(selectCount);
-}
 
 /**
- *
- * @param {Player} ind1
- * @param {Player} godInd
- * @returns
+ * Clona una red neuronal (copia profunda de pesos y biases)
+ * @param {NeuronalNetwork} brain
+ * @returns {NeuronalNetwork}
  */
-function crossing(ind1, godInd) {
-  let brain1 = ind1.brain;
-  const brain2 = godInd.brain;
-
-  for (let i = 0; i < brain1.Pesos.length; i++) {
-    if (Math.random() > 0.5) {
-      brain1.Pesos[i] = brain2.Pesos[i];
+function clonarRed(brain) {
+  const clone = new NeuronalNetwork(brain.Config);
+  for (let i = 0; i < brain.Pesos.length; i++) {
+    for (let j = 0; j < brain.Pesos[i].Data.length; j++) {
+      for (let k = 0; k < brain.Pesos[i].Data[j].length; k++) {
+        clone.Pesos[i].Data[j][k] = brain.Pesos[i].Data[j][k];
+      }
     }
   }
-  return brain1;
+  for (let i = 0; i < brain.Bias.length; i++) {
+    for (let j = 0; j < brain.Bias[i].Data.length; j++) {
+      clone.Bias[i].Data[j][0] = brain.Bias[i].Data[j][0];
+    }
+  }
+  return clone;
 }
+
 /**
- *
- * @param {Player} ind1
- * @returns
+ * Selección por Torneo: elige aleatoriamente K participantes
+ * y devuelve el que tiene mejor fitness.
+ * @param {Player[]} poblacion
+ * @param {number} tamTorneo - Cantidad de participantes (default: 3)
+ * @returns {Player}
  */
-function mutation(ind1) {
-  let brain1 = ind1.brain;
-  // pesos
-  for (let i = 0; i < brain1.Pesos.length; i++) {
-    for (let j = 0; j < brain1.Pesos[i].Data.length; j++) {
-      for (let k = 0; k < brain1.Pesos[i].Data[j].length; k++) {
-        if (Math.random() > 0.5) {
-          brain1.Pesos[i].Data[j][k] += Math.random() - Math.random();
-        } else {
-          brain1.Pesos[i].Data[j][k] -= Math.random() - Math.random();
+function seleccionTorneo(poblacion, tamTorneo = 3) {
+  let mejor = null;
+  for (let i = 0; i < tamTorneo; i++) {
+    const idx = Math.floor(Math.random() * poblacion.length);
+    const candidato = poblacion[idx];
+    if (!mejor || candidato.fitness > mejor.fitness) {
+      mejor = candidato;
+    }
+  }
+  return mejor;
+}
+
+/**
+ * Cruce Uniforme: genera un hijo donde cada peso individual
+ * tiene 50% de probabilidad de provenir de cada padre.
+ * @param {Player} padre1
+ * @param {Player} padre2
+ * @returns {NeuronalNetwork} Nueva red neuronal (independiente)
+ */
+function cruceUniforme(padre1, padre2) {
+  const hijo = new NeuronalNetwork(padre1.brain.Config);
+
+  // Cruzar pesos
+  for (let i = 0; i < hijo.Pesos.length; i++) {
+    for (let j = 0; j < hijo.Pesos[i].Data.length; j++) {
+      for (let k = 0; k < hijo.Pesos[i].Data[j].length; k++) {
+        hijo.Pesos[i].Data[j][k] = Math.random() < 0.5
+          ? padre1.brain.Pesos[i].Data[j][k]
+          : padre2.brain.Pesos[i].Data[j][k];
+      }
+    }
+  }
+
+  // Cruzar biases
+  for (let i = 0; i < hijo.Bias.length; i++) {
+    for (let j = 0; j < hijo.Bias[i].Data.length; j++) {
+      hijo.Bias[i].Data[j][0] = Math.random() < 0.5
+        ? padre1.brain.Bias[i].Data[j][0]
+        : padre2.brain.Bias[i].Data[j][0];
+    }
+  }
+
+  return hijo;
+}
+
+/**
+ * Mutación Gaussiana: agrega ruido con distribución normal
+ * a cada peso con probabilidad `tasa`.
+ * @param {NeuronalNetwork} brain
+ * @param {number} tasa - Probabilidad de mutar cada peso (0-1)
+ * @param {number} magnitud - Desviación estándar del ruido
+ * @returns {NeuronalNetwork}
+ */
+function mutacion(brain, tasa = 0.3, magnitud = 0.5) {
+  for (let i = 0; i < brain.Pesos.length; i++) {
+    for (let j = 0; j < brain.Pesos[i].Data.length; j++) {
+      for (let k = 0; k < brain.Pesos[i].Data[j].length; k++) {
+        if (Math.random() < tasa) {
+          brain.Pesos[i].Data[j][k] += randn() * magnitud;
         }
       }
     }
   }
-  return brain1;
+  // Mutar biases tambien
+  for (let i = 0; i < brain.Bias.length; i++) {
+    for (let j = 0; j < brain.Bias[i].Data.length; j++) {
+      if (Math.random() < tasa) {
+        brain.Bias[i].Data[j][0] += randn() * magnitud;
+      }
+    }
+  }
+  return brain;
+}
+
+/**
+ * Genera un número aleatorio con distribución normal estándar
+ * usando el método Box-Muller.
+ * @returns {number}
+ */
+function randn() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
