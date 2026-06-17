@@ -1,11 +1,12 @@
 /**
- *
- * @param {Player[]} arr
- * @param {number} selectCount
+ * Selecciona a los N mejores jugadores de la población.
+ * @param {Player[]} arr Población actual
+ * @param {number} selectCount Cantidad de mejores jugadores a conservar
  * @returns {Player[]}
  */
 function seleccion(arr, selectCount) {
-  return arr.sort((a, b) => a.score - b.score).slice(selectCount);
+  // Copiar el array antes de ordenar para no mutar el original
+  return [...arr].sort((a, b) => b.score - a.score).slice(0, selectCount);
 }
 
 /**
@@ -15,32 +16,47 @@ function seleccion(arr, selectCount) {
  * @returns
  */
 function crossing(ind1, godInd) {
-  let brain1 = ind1.brain;
+  let brain1 = ind1.brain.clone();
   const brain2 = godInd.brain;
 
   for (let i = 0; i < brain1.Pesos.length; i++) {
     if (Math.random() > 0.5) {
-      brain1.Pesos[i] = brain2.Pesos[i];
+     // Copiar valor por valor, no la referencia
+      for (let j = 0; j < brain1.Pesos[i].Filas; j++) {
+        for (let k = 0; k < brain1.Pesos[i].Columnas; k++) {
+          brain1.Pesos[i].Data[j][k] = brain2.Pesos[i].Data[j][k];
+        }
+      }
     }
   }
   return brain1;
 }
-/**
- *
- * @param {Player} ind1
- * @returns
- */
+const MUTATION_RATE = 0.8;   // 80% por peso (como NEAT)
+const MUTATE_POWER = 0.5;    // perturbación Gaussiana
+const REPLACE_RATE = 0.1;    // 10% reemplazo completo
+const MIN_WEIGHT = -30;
+const MAX_WEIGHT = 30;
+
 function mutation(ind1) {
   let brain1 = ind1.brain;
-  // pesos
   for (let i = 0; i < brain1.Pesos.length; i++) {
     for (let j = 0; j < brain1.Pesos[i].Data.length; j++) {
       for (let k = 0; k < brain1.Pesos[i].Data[j].length; k++) {
-        if (Math.random() > 0.5) {
-          brain1.Pesos[i].Data[j][k] += Math.random() - Math.random();
-        } else {
-          brain1.Pesos[i].Data[j][k] -= Math.random() - Math.random();
+        const r = Math.random();
+        if (r < MUTATION_RATE) {
+          // Perturbación Gaussiana (Box-Muller simplificado)
+          const u = Math.random()
+          const v = Math.random();
+          
+          const gauss = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+          brain1.Pesos[i].Data[j][k] += gauss * MUTATE_POWER;
+        } else if (r < MUTATION_RATE + REPLACE_RATE) {
+          // Reemplazo completo (diversidad)
+          brain1.Pesos[i].Data[j][k] = (Math.random() - 0.5) * 2 * 30;
         }
+        // Clamp
+        brain1.Pesos[i].Data[j][k] = Math.max(MIN_WEIGHT, 
+          Math.min(MAX_WEIGHT, brain1.Pesos[i].Data[j][k]));
       }
     }
   }

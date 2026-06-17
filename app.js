@@ -30,36 +30,40 @@ function isAllDead() {
 
   if (isDead) {
     maxScore = score > maxScore ? score : maxScore;
-    const maxPlayers = seleccion(players, -maxPlayerSelection);
+    
+    // Obtenemos los 2 mejores jugadores (asumiendo que seleccion espera un número positivo)
+    const maxPlayers = seleccion(players, maxPlayerSelection);
 
-    for (let _ = 0; _ < maxPlayerSelection; _++) {
-      maxPlayers[_].aLive = true;
+    // Revivimos a los élites
+    for (let i = 0; i < maxPlayerSelection; i++) {
+      maxPlayers[i].aLive = true;
     }
+    
     players = [];
     players.push(...maxPlayers);
-    initialPoblation(0, countPlayers - maxPlayerSelection);
 
-    // cruce
-    for (let _ = 0; _ < maxCross; _++) {
-      const individual = randomNumber(maxPlayerSelection, players.length);
-      const maxIndividual = randomNumber(0, maxPlayerSelection);
-
-      const resultPlayer = crossing(
-        players[individual],
-        maxPlayers[maxIndividual]
-      );
-
-      players[individual].brain = resultPlayer;
+    // Llenamos el RESTO de la población ÚNICAMENTE con hijos cruzados
+    for (let i = maxPlayerSelection; i < countPlayers; i++) {
+      // Elegimos un padre aleatorio de entre los élites
+      const padreAleatorio = randomNumber(0, maxPlayerSelection - 1);
+      const madreAleatoria = randomNumber(0, maxPlayerSelection - 1);
+      
+      // Creamos un nuevo jugador
+      let nuevoHijo = new Player(brainConfig);
+      
+      // Cruzamos a dos individuos de la élite para crear el cerebro del hijo
+      nuevoHijo.brain = crossing(maxPlayers[padreAleatorio], maxPlayers[madreAleatoria]);
+      
+      players.push(nuevoHijo);
     }
 
-    // mutacion
+    // Mutamos a toda la nueva generación (menos a los élites intocables)
     for (let i = maxPlayerSelection; i < players.length; i++) {
       players[i].brain = mutation(players[i]);
     }
 
     score = 0;
     enemys = [];
-    crossPlayer = [];
     generacion++;
   }
 }
@@ -75,8 +79,10 @@ function initialPoblation(n1, n2) {
 }
 
 function draw() {
+  var input1 = 1;
+
   if (enemys.length > 0) {
-    var input1 = enemys[0].x / widthMap;
+   input1 = (enemys[0].x / widthMap);
   }
 
   background(220);
@@ -110,7 +116,7 @@ function draw() {
   }
 
   // Colision entre jugador y enemigo
-  for (let i = 0; i < enemys.length; i++) {
+  for (let i = enemys.length - 1; i >= 0; i--) {
     let enemy = enemys[i];
     for (let index = 0; index < players.length; index++) {
       // si es eliminado
