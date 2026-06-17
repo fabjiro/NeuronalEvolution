@@ -19,9 +19,9 @@ function crossing(ind1, godInd) {
   let brain1 = ind1.brain.clone();
   const brain2 = godInd.brain;
 
+  // Cruzar Pesos
   for (let i = 0; i < brain1.Pesos.length; i++) {
     if (Math.random() > 0.5) {
-     // Copiar valor por valor, no la referencia
       for (let j = 0; j < brain1.Pesos[i].Filas; j++) {
         for (let k = 0; k < brain1.Pesos[i].Columnas; k++) {
           brain1.Pesos[i].Data[j][k] = brain2.Pesos[i].Data[j][k];
@@ -29,13 +29,33 @@ function crossing(ind1, godInd) {
       }
     }
   }
+
+  // Cruzar Bias también
+  for (let i = 0; i < brain1.Bias.length; i++) {
+    if (Math.random() > 0.5) {
+      for (let j = 0; j < brain1.Bias[i].Filas; j++) {
+        brain1.Bias[i].Data[j][0] = brain2.Bias[i].Data[j][0];
+      }
+    }
+  }
+
   return brain1;
 }
-const MUTATION_RATE = 0.4;   // 40% por peso
-const MUTATE_POWER = 0.5;    // perturbación Gaussiana
-const REPLACE_RATE = 0.05;   // 5% reemplazo completo
+const MUTATION_RATE = 0.06;  // 6% por peso
+const MUTATE_POWER = 0.8;    // perturbación Gaussiana
+const REPLACE_RATE = 0.08;   // 8% reemplazo completo
 const MIN_WEIGHT = -30;
 const MAX_WEIGHT = 30;
+
+/**
+ * Genera un valor aleatorio con distribución normal estándar (Box-Muller).
+ * Protegido contra Math.random() = 0 que causaría NaN.
+ */
+function randomGaussian() {
+  const u = Math.max(1e-10, Math.random());
+  const v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
 
 function mutation(ind1) {
   let brain1 = ind1.brain;
@@ -46,14 +66,8 @@ function mutation(ind1) {
       for (let k = 0; k < brain1.Pesos[i].Data[j].length; k++) {
         const r = Math.random();
         if (r < MUTATION_RATE) {
-          // Perturbación Gaussiana (Box-Muller simplificado)
-          const u = Math.random()
-          const v = Math.random();
-          
-          const gauss = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-          brain1.Pesos[i].Data[j][k] += gauss * MUTATE_POWER;
+          brain1.Pesos[i].Data[j][k] += randomGaussian() * MUTATE_POWER;
         } else if (r < MUTATION_RATE + REPLACE_RATE) {
-          // Reemplazo completo (diversidad)
           brain1.Pesos[i].Data[j][k] = (Math.random() - 0.5) * 2 * 30;
         }
         // Clamp
@@ -69,11 +83,7 @@ function mutation(ind1) {
       for (let k = 0; k < brain1.Bias[i].Data[j].length; k++) {
         const r = Math.random();
         if (r < MUTATION_RATE) {
-          const u = Math.random()
-          const v = Math.random();
-          
-          const gauss = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-          brain1.Bias[i].Data[j][k] += gauss * MUTATE_POWER;
+          brain1.Bias[i].Data[j][k] += randomGaussian() * MUTATE_POWER;
         } else if (r < MUTATION_RATE + REPLACE_RATE) {
           brain1.Bias[i].Data[j][k] = (Math.random() - 0.5) * 2 * 30;
         }
