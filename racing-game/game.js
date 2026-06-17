@@ -27,7 +27,7 @@ let gameState = {
   cameraFollow: true // ← Nueva variable para el control de cámara
 };
 
-let camButton; // Variable para nuestro botón
+let camButton, exportButton, importButton, importFileInput;
 
 // ─── GENERACIÓN DE PISTA PARAMETRIZADA ─────────────────────────
 function generateTrack() {
@@ -322,6 +322,141 @@ function setup() {
       camButton.style('background-color', '#f44336'); // Rojo
     }
   });
+
+  // ─── BOTÓN EXPORTAR ──────────────────────────────────────
+  const btnStyle = (btn, bgColor, top) => {
+    btn.style('position', 'absolute');
+    btn.style('top', top);
+    btn.style('right', '20px');
+    btn.style('padding', '8px 12px');
+    btn.style('background-color', bgColor);
+    btn.style('color', 'white');
+    btn.style('border', 'none');
+    btn.style('border-radius', '8px');
+    btn.style('font-family', 'monospace');
+    btn.style('font-weight', 'bold');
+    btn.style('cursor', 'pointer');
+    btn.style('box-shadow', '0 4px 6px rgba(0,0,0,0.3)');
+    btn.style('font-size', '13px');
+  };
+
+  exportButton = createButton('💾 Exportar Cerebro');
+  btnStyle(exportButton, '#2196F3', '70px');
+  exportButton.mousePressed(() => exportBestBrain());
+
+  // ─── BOTÓN IMPORTAR + INPUT OCULTO ──────────────────────
+  importFileInput = createFileInput((file) => handleImportFile(file));
+  importFileInput.style('display', 'none');
+
+  importButton = createButton('📥 Importar Cerebro');
+  btnStyle(importButton, '#FF9800', '110px');
+  importButton.mousePressed(() => {
+    importFileInput.elt.click(); // Dispara el diálogo de archivo
+  });
+}
+
+// ─── EXPORTAR / IMPORTAR CEREBRO ──────────────────────────────
+
+/**
+ * Serializa el cerebro de la red neuronal a un objeto JSON plano.
+ */
+function serializeBrain(brain) {
+  return {
+    config: brain.Config,
+    pesos: brain.Pesos.map(m => m.Data),
+    bias: brain.Bias.map(m => m.Data)
+  };
+}
+
+/**
+ * Reconstruye un cerebro desde un objeto JSON plano.
+ */
+function deserializeBrain(data) {
+  const nn = new NeuronalNetwork(data.config);
+  for (let i = 0; i < nn.Pesos.length; i++) {
+    for (let j = 0; j < nn.Pesos[i].Filas; j++) {
+      for (let k = 0; k < nn.Pesos[i].Columnas; k++) {
+        nn.Pesos[i].Data[j][k] = data.pesos[i][j][k];
+      }
+    }
+  }
+  for (let i = 0; i < nn.Bias.length; i++) {
+    for (let j = 0; j < nn.Bias[i].Filas; j++) {
+      nn.Bias[i].Data[j][0] = data.bias[i][j][0];
+    }
+  }
+  return nn;
+}
+
+/**
+ * Exporta el cerebro del mejor coche como archivo .json descargable.
+ */
+function exportBestBrain() {
+  const bestCar = gameState.cars.reduce((a, b) => a.score > b.score ? a : b);
+  if (!bestCar) return;
+
+  const data = serializeBrain(bestCar.brain);
+  data.generation = gameState.generation;
+  data.score = bestCar.score;
+
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `racing-brain-gen${data.generation}-score${data.score.toFixed(0)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  console.log(`🧠 Cerebro exportado | Gen ${data.generation} | Score ${data.score.toFixed(1)}`);
+}
+
+/**
+ * Maneja la importación de un archivo .json con un cerebro guardado.
+ */
+function handleImportFile(file) {
+  if (!file || file.type !== 'application/json') {
+    console.warn('⚠️  Archivo no válido. Selecciona un .json de cerebro exportado.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.config || !data.pesos || !data.bias) {
+        throw new Error('Formato inválido');
+      }
+
+      const importedBrain = deserializeBrain(data);
+
+      // Reemplazar TODA la población con clones mutados del cerebro importado
+      const newCars = [];
+      for (let i = 0; i < CONFIG.NEAT.POP_SIZE; i++) {
+        const car = new Car();
+        car.brain = i < CONFIG.NEAT.ELITE_COUNT
+          ? importedBrain.clone()           // Élites: copia exacta
+          : crossing({ brain: importedBrain }, { brain: importedBrain }); // Hijos: crossover + mutación abajo
+        if (i >= CONFIG.NEAT.ELITE_COUNT) mutation(car);
+        newCars.push(car);
+      }
+
+      gameState.cars = newCars;
+      for (const c of gameState.cars) c.reset();
+      gameState.framesAlive = 0;
+      gameState.generation = 1;
+      gameState.hallOfFame = [];
+
+      console.log(`🧠 Cerebro importado | Score original: ${data.score?.toFixed(1) || '?'} | Gen original: ${data.generation || '?'}`);
+      console.log(`🔄 Nueva población inicializada con ${CONFIG.NEAT.POP_SIZE} coches desde el cerebro importado`);
+    } catch (err) {
+      console.error('❌ Error al importar cerebro:', err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 // ─── DRAW ─────────────────────────────────────────────────────
