@@ -8,7 +8,7 @@ const W = 500;
 const H = 600;
 const POP_SIZE = 30;
 const ELITE_COUNT = 5;
-const BRAIN_CONFIG = [3, 6, 1]; // 3 inputs, 6 hidden, 1 output
+const BRAIN_CONFIG = [4, 6, 1]; // 4 inputs: birdY, birdVy, distToPipe, gapOffset
 
 const GRAVITY = 0.5;
 const FLAP_VEL = -8;
@@ -77,21 +77,25 @@ class Bird {
   think() {
     if (!this.alive) return;
 
-    // Encontrar el siguiente pipe
+    // Encontrar el pipe relevante: el primero que el pájaro NO ha pasado completamente
     let nextPipe = null;
     for (const p of pipes) {
-      if (p.x + p.w > this.x) {
+      // Pipe todavía relevante si su borde derecho no ha pasado al pájaro
+      if (p.x + p.w > this.x - BIRD_R) {
         nextPipe = p;
         break;
       }
     }
 
-    if (!nextPipe) return;
+    // Si no hay pipe visible, usar valores por defecto "vía libre"
+    const distToPipe = nextPipe ? (nextPipe.x - this.x) / W : 1.5;
+    const gapOffset   = nextPipe ? (nextPipe.gapY - this.y) / H : 0;
 
     const inputs = [
-      this.y / H,                              // posición vertical
-      (nextPipe.x + nextPipe.w - this.x) / W,  // distancia horizontal al pipe
-      (nextPipe.gapY - this.y) / H,            // diferencia con el gap
+      this.y / H,           // posición vertical normalizada [0, 1]
+      this.vy / 12,          // velocidad vertical (clamp implícito por rango típico)
+      distToPipe,            // distancia al borde IZQUIERDO del pipe (-0.2=pasad, 0=entrada, +0.8=lejos)
+      gapOffset,             // offset vertical al centro del gap [-0.8, 0.8]
     ];
 
     const output = this.brain.Prediccion(inputs);
